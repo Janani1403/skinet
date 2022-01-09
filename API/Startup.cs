@@ -1,3 +1,5 @@
+using API.Helper;
+using Core.Interfaces;
 using Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
@@ -16,13 +18,22 @@ namespace API
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-
             services.AddControllers();
-            services.AddTransient<StoreContext>();
+            services.AddScoped<IProductRepository, ProductRepository>();
+            services.AddScoped(typeof(IGenericRepository<>), (typeof(GenericRepository<>)));
+            services.AddAutoMapper(typeof(MappingProfile));
             services.AddDbContext<StoreContext>(x => x.UseSqlServer(Configuration.GetConnectionString("Default")));
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "WebAPIv5", Version = "v1" });
+            });
+            services.AddCors(options =>
+            {
+                options.AddPolicy(name: "_myAllowSpecificOrigins",
+                    builder =>
+                    {
+                        builder.WithOrigins("https://localhost:4200").AllowAnyMethod().AllowAnyHeader();
+                    });
             });
         }
 
@@ -40,11 +51,15 @@ namespace API
 
             app.UseRouting();
 
+            app.UseCors("_myAllowSpecificOrigins");
+
+            app.UseStaticFiles();
+          
             app.UseAuthorization();
 
             app.UseEndpoints(endpoints =>
             {
-                endpoints.MapControllers();
+                endpoints.MapControllers().RequireCors("_myAllowSpecificOrigins");
             });
         }
     }
