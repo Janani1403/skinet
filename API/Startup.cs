@@ -1,6 +1,10 @@
+using API.Errors;
+using API.Extensions;
 using API.Helper;
+using API.Middleware;
 using Core.Interfaces;
 using Infrastructure.Data;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 
@@ -19,10 +23,10 @@ namespace API
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllers();
-            services.AddScoped<IProductRepository, ProductRepository>();
-            services.AddScoped(typeof(IGenericRepository<>), (typeof(GenericRepository<>)));
+            
             services.AddAutoMapper(typeof(MappingProfile));
             services.AddDbContext<StoreContext>(x => x.UseSqlServer(Configuration.GetConnectionString("Default")));
+            services.AddApplicationServices();
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "WebAPIv5", Version = "v1" });
@@ -35,11 +39,14 @@ namespace API
                         builder.WithOrigins("https://localhost:4200").AllowAnyMethod().AllowAnyHeader();
                     });
             });
+
+            
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
+            app.UseMiddleware<ExceptionMiddleware>();
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
@@ -47,6 +54,8 @@ namespace API
                 app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "WebAPIv5 v1"));
             }
 
+            app.UseStatusCodePagesWithReExecute("/errors/{0}");
+                
             app.UseHttpsRedirection();
 
             app.UseRouting();
